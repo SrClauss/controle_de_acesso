@@ -44,4 +44,3 @@ def get_script_status(script_id):
 
 if __name__ == '__main__':
     app.run()
-
