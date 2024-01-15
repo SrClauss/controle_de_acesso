@@ -8,8 +8,6 @@ db = TinyDB('db.json')
 app = Flask(__name__)
 
 
-prodution = False
-url = "https://x9s3hsdp44.us-east-1.awsapprunner.com/" if prodution else "http://192.168.1.6:8080"
 
 
 """

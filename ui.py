@@ -3,7 +3,7 @@ from tkinter import BooleanVar, Button, Text, Tk, Frame, Checkbutton, Label
 import requests
 
 
-prodution = False
+prodution = True
 url = "https://x9s3hsdp44.us-east-1.awsapprunner.com/" if prodution else "http://192.168.1.6:8080/"
 
 def send_click(e):
