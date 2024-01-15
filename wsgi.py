@@ -98,3 +98,5 @@ def send_errors(script_id):
     db.update(script[0], Query().script_id == script_id)
     return script[0], 200
 
+if __name__ == "__main__":
+    app.run()
