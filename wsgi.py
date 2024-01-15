@@ -1,5 +1,4 @@
 from flask import Flask, request
-import requests
 from tinydb import TinyDB, Query
 
 db = TinyDB('db.json')
