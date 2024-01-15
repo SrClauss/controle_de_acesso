@@ -1,9 +1,0 @@
-version: 1 # Versão do arquivo de configuração
-runtime: python3.11 # Tempo de execução do App Runner
-
-build:
-  command: pip install -r requirements.txt # Comando de compilação para instalar dependências
-
-start:
-  command: python main.py # Comando de início para iniciar o servidor da web
-  port: 8000 # Porta TCP utilizada pelo serviço

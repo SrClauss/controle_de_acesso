@@ -2,21 +2,26 @@ from flask import Flask, request
 from tinydb import TinyDB
 
 db = TinyDB('db.json')
-script_info_table  = db.table('script_info')
+error_table  = db.table('error')
 scripts_table = db.table('scripts')
 
 app = Flask(__name__)
 
-@app.route('/script_info', methods=['POST'])
+@app.route('/send_error', methods=['POST'])
 def script_info():
     data = request.get_json()
-    script_info_table.insert(data)
+    error_table.insert(data)
     return {'Message': 'Sucess'}
 
 
-@app.route('/', methods=['GET'])
+@app.route('/errors', methods=['GET'])
 def get_scripts_info():
-    return script_info_table.all()
+    return error_table.all()
+
+
+@app.route('/', methods=['GET'])
+def get_scripts_list():
+    return scripts_table.all()
 
 
 @app.route('/save_script', methods=['POST'])
