@@ -42,7 +42,6 @@ app = Flask(__name__)
 def get_scripts_list():
     return db.all(), 200
 
-
 @app.route("/get_script/<script_id>", methods=['GET'])
 def get_script(script_id):
     if not db.search(Query().script_id == script_id):
@@ -96,6 +95,13 @@ def send_errors(script_id):
     script[0]['errors'].append(body)
     db.update(script[0], Query().script_id == script_id)
     return script[0], 200
-
+@app.route("/clear_errors/<script_id>", methods=['PUT'])
+def clear_errors(script_id):
+    script = db.search(Query().script_id == script_id)
+    if not script:
+        return "{\"message\": \"script not found\"}", 404
+    script[0]['errors'] = []
+    db.update(script[0], Query().script_id == script_id)
+    return script[0], 200
 if __name__ == "__main__":
     app.run()
