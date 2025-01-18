@@ -1,84 +1,97 @@
-#[macro_use] extern crate rocket;
-
-use serde::{Serialize, Deserialize};
-use rocket::serde::json::Json;
-use rocket::State;
-use uuid::Uuid;
+use rocket::{get, post, put, delete, routes, State, http::Status, serde::json::Json};
 use sled::Db;
-use rocket::http::Status;
+use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Trabalho {
     id: String,
     descricao: String,
     cliente: String,
-    resposta: Vec<String>
+    resposta: Vec<String>,
 }
 
-
-
-
 impl Trabalho {
-    pub fn new(descricao: String, cliente: String, resposta: Vec<String>) -> Self {
+    fn new(descricao: String, cliente: String, resposta: Vec<String>) -> Trabalho {
         Trabalho {
             id: Uuid::new_v4().to_string(),
             descricao,
             cliente,
-            resposta
-
+            resposta,
         }
     }
 }
-#[derive(Serialize, Deserialize)]
 
-pub struct TrabalhoDTO{
-    pub descricao: String,
-    pub cliente: String,
-    pub resposta: Vec<String>
+#[derive(Serialize, Deserialize)]
+pub struct TrabalhoDTO {
+    descricao: String,
+    cliente: String,
+    resposta: Vec<String>,
+}
+
+
+#[post("/trabalho", data = "<trabalho_dto>")]
+fn create_trabalho(trabalho_dto: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
+    let trabalho = Trabalho::new(trabalho_dto.descricao.clone(), trabalho_dto.cliente.clone(), trabalho_dto.resposta.clone());
+    let key = trabalho.id.as_bytes().to_vec();
+    db.insert(key, serde_json::to_vec(&trabalho).unwrap()).unwrap();
+    Status::Created
+}
+
+
+#[get("/trabalho/<id>")]
+fn get_trabalho(id: &str, db: &State<Db>) -> Option<Json<Trabalho>> {
+    let key = id.as_bytes().to_vec(); 
+    if let Some(value) = db.get(key).unwrap(){
+         let trabalho: Trabalho = serde_json::from_slice(&value).unwrap();
+        Some(Json(trabalho))
+    } else {
+        None
+    }
 }
 
 
 #[get("/trabalho")]
-fn get_trabalhos(db: &State<Db>) -> Json<Vec<Trabalho>> {
-    let trabalhos = db.into_iter().map(|r| r.unwrap()).map(|(_, v)| {
-        serde_json::from_slice::<Trabalho>(&v).unwrap()
-    }).collect::<Vec<_>>();
+pub fn get_all_trabalhos(db: &State<Db>) -> Json<Vec<Trabalho>> {
+    let mut trabalhos: Vec<Trabalho> = Vec::new();
+
+    for item in db.iter() {
+        match item {
+            Ok((_key, value)) => {
+                let trabalho: Trabalho = serde_json::from_slice(&value).unwrap();
+                trabalhos.push(trabalho);
+            },
+            Err(e) => {
+                println!("Erro ao iterar sobre o banco de dados: {:?}", e);
+            }
+        }
+    }
+
     Json(trabalhos)
-
-   
-}
-#[get("/trabalho/<id>")]
-fn get_trabalho(id: &str, db: &State<Db>) -> Option<Json<Trabalho>> {
-    println!("Procurando trabalho com ID: {}", id);
-    let trabalho = db.get(id).unwrap().map(|v| {
-        serde_json::from_slice::<Trabalho>(&v).unwrap()
-    });
-    println!("Trabalho encontrado: {:?}", trabalho);
-    trabalho.map(Json)
-}
-#[post("/trabalho", data = "<trabalho>")]
-fn create_trabalho(trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
-    let trabalho = Trabalho::new(trabalho.descricao.clone(), trabalho.cliente.clone(), trabalho.resposta.clone());
-    db.insert(trabalho.id.clone(), serde_json::to_vec(&trabalho).unwrap()).unwrap();
-    Status::Created
-}
-
-#[delete("/trabalho/<id>")]
-fn delete_trabalho(id: &str, db: &State<Db>) -> Status {
-    db.remove(id).unwrap();
-    Status::NoContent
 }
 #[put("/trabalho/<id>", data = "<trabalho>")]
-fn update_trabalho(id: &str, trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
-    let trabalho = Trabalho::new(trabalho.descricao.clone(), trabalho.cliente.clone(), trabalho.resposta.clone());
-    db.insert(id, serde_json::to_vec(&trabalho).unwrap()).unwrap();
+fn update_trabalho(id: &str, trabalho: Json<Trabalho>, db: &State<Db>) -> Status {
+    let key = id.as_bytes().to_vec();
+    db.insert(key, serde_json::to_vec(&trabalho.into_inner()).unwrap()).unwrap();
     Status::Ok
 }
 
-#[launch]
-fn rocket() -> _ {
-    let db = sled::open("trabalhos.db").unwrap();
+
+#[delete("/trabalho/<id>")]
+fn delete_trabalho(id: &str, db: &State<Db>) -> Status {
+    let key = id.as_bytes().to_vec();
+    db.remove(key).unwrap();
+    Status::Ok
+}
+
+
+#[rocket::main]
+async fn main() {
+    let db = sled::open("trabalho.db").unwrap();
     rocket::build()
-        .mount("/", routes![get_trabalhos, get_trabalho, create_trabalho, delete_trabalho, update_trabalho])
         .manage(db)
+        .mount("/", routes![create_trabalho, get_trabalho, get_all_trabalhos, update_trabalho, delete_trabalho])
+        .launch()
+        .await
+        .unwrap();
 }
