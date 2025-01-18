@@ -7,7 +7,7 @@ use uuid::Uuid;
 use sled::Db;
 use rocket::http::Status;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Trabalho {
     id: String,
     descricao: String,
@@ -48,15 +48,15 @@ fn get_trabalhos(db: &State<Db>) -> Json<Vec<Trabalho>> {
    
 }
 #[get("/trabalho/<id>")]
-fn get_trabalho(id: String, db: &State<Db>) -> Option<Json<Trabalho>> {
+fn get_trabalho(id: &str, db: &State<Db>) -> Option<Json<Trabalho>> {
+    println!("Procurando trabalho com ID: {}", id);
     let trabalho = db.get(id).unwrap().map(|v| {
         serde_json::from_slice::<Trabalho>(&v).unwrap()
     });
+    println!("Trabalho encontrado: {:?}", trabalho);
     trabalho.map(Json)
 }
 #[post("/trabalho", data = "<trabalho>")]
-
-
 fn create_trabalho(trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
     let trabalho = Trabalho::new(trabalho.descricao.clone(), trabalho.cliente.clone(), trabalho.resposta.clone());
     db.insert(trabalho.id.clone(), serde_json::to_vec(&trabalho).unwrap()).unwrap();
@@ -64,12 +64,12 @@ fn create_trabalho(trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
 }
 
 #[delete("/trabalho/<id>")]
-fn delete_trabalho(id: String, db: &State<Db>) -> Status {
+fn delete_trabalho(id: &str, db: &State<Db>) -> Status {
     db.remove(id).unwrap();
     Status::NoContent
 }
 #[put("/trabalho/<id>", data = "<trabalho>")]
-fn update_trabalho(id: String, trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
+fn update_trabalho(id: &str, trabalho: Json<TrabalhoDTO>, db: &State<Db>) -> Status {
     let trabalho = Trabalho::new(trabalho.descricao.clone(), trabalho.cliente.clone(), trabalho.resposta.clone());
     db.insert(id, serde_json::to_vec(&trabalho).unwrap()).unwrap();
     Status::Ok
