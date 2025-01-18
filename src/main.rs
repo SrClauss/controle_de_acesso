@@ -69,9 +69,9 @@ pub fn get_all_trabalhos(db: &State<Db>) -> Json<Vec<Trabalho>> {
 
     Json(trabalhos)
 }
-#[put("/trabalho/<id>", data = "<trabalho>")]
-fn update_trabalho(id: &str, trabalho: Json<Trabalho>, db: &State<Db>) -> Status {
-    let key = id.as_bytes().to_vec();
+#[put("/trabalho", data = "<trabalho>")]
+fn update_trabalho(trabalho: Json<Trabalho>, db: &State<Db>) -> Status {
+    let key = trabalho.id.as_bytes().to_vec();
     db.insert(key, serde_json::to_vec(&trabalho.into_inner()).unwrap()).unwrap();
     Status::Ok
 }
@@ -83,6 +83,23 @@ fn delete_trabalho(id: &str, db: &State<Db>) -> Status {
     db.remove(key).unwrap();
     Status::Ok
 }
+#[get("/find/<cliente>")]
+fn find_trabalho(cliente: &str, db: &State<Db>) -> Option<Json<Trabalho>>{
+    for item in db.iter() {
+        match item {
+            Ok((_key, value)) => {
+                let trabalho: Trabalho = serde_json::from_slice(&value).unwrap();
+                if trabalho.cliente == cliente {
+                    return Some(Json(trabalho));
+                }
+            },
+            Err(e) => {
+                println!("Erro ao iterar sobre o banco de dados: {:?}", e);
+            }
+        }
+    }
+    None
+}
 
 
 #[rocket::main]
@@ -90,7 +107,7 @@ async fn main() {
     let db = sled::open("trabalho.db").unwrap();
     rocket::build()
         .manage(db)
-        .mount("/", routes![create_trabalho, get_trabalho, get_all_trabalhos, update_trabalho, delete_trabalho])
+        .mount("/", routes![create_trabalho, get_trabalho, get_all_trabalhos, update_trabalho, delete_trabalho, find_trabalho])
         .launch()
         .await
         .unwrap();
